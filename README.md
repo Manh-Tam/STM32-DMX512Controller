@@ -1,5 +1,3 @@
----
-
 ## 📘 Mô tả dự án – STM32 DMX512 Controller
 
 **STM32 DMX512 Controller** là một bộ điều khiển tín hiệu tiêu chuẩn DMX512 dựa trên vi điều khiển STM32, được thiết kế dùng để:
@@ -7,8 +5,6 @@
 * 🕹️ **Truyền dữ liệu DMX512** qua giao tiếp RS‑485, hỗ trợ tối đa 512 channel cho hệ thống ánh sáng stage hoặc lighting fixtures.
 * ⚙️ Tùy chỉnh phần cứng linh hoạt: mạch driver RS‑485, định thời bằng Timer của STM32.
 * 🔄 Quản lý thời gian và độ trễ kỹ thuật để đảm bảo tín hiệu BREAK, MARK‑After‑Break và MARK‑Between‑Slots đúng theo tiêu chuẩn DMX512.
-
----
 
 ## ⚙️ Chi tiết kỹ thuật & tính năng
 

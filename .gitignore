@@ -10,9 +10,6 @@ Release/
 *.hex
 
 # STM32CubeIDE
-.cproject
-.project
-.settings/
 .ipr
 .iws
 .idea/

@@ -170,19 +170,6 @@ int main(void)
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, SET);
 	  delay_us(1);
 
-//	  uint64_t data = Flash_ReadDoubleWord(DATA_PAGE_ADDR + i * 8);
-//
-//	  Effect_t effect =
-//	  {
-//			  .EffectItemNum = (data >> 56) & 0xff,
-//			  .HourDuration = (data >> 48) & 0xff,
-//			  .MinuteDuration = (data >> 40) & 0xff,
-//			  .SecondDuration = (data >> 32) & 0xff,
-//			  .Color_R = (data >> 24) & 0xff,
-//			  .Color_G = (data >> 16) & 0xff,
-//			  .Color_B = (data >> 8) & 0xff,
-//	  };
-
 	  Effect_t effect = RxBuffer[currentEffect];
 
 	  switch (effect.EffectItemNum)

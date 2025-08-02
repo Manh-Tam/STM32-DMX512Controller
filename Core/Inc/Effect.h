@@ -31,7 +31,7 @@ typedef struct
 	uint8_t reserved;
 }Effect_t;
 
-extern Effect_t RxBuffer[100];
+extern Effect_t RxBuffer[80];
 extern uint8_t currentEffect;
 
 void Rainbow();

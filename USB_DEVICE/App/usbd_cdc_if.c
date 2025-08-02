@@ -23,9 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "flash.h"
-extern Effect_t RxBuffer[100];
-extern uint8_t dataLength;
-extern uint8_t currentEffect;
+
 
 /* USER CODE END INCLUDE */
 
@@ -35,7 +33,10 @@ extern uint8_t currentEffect;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+extern Effect_t RxBuffer[80];
+extern uint8_t num;
+extern uint8_t currentEffect;
+extern uint8_t flash_flag;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -131,7 +132,7 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length);
 static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-
+void StoreEffectIntoBuffer(uint8_t* Buf, uint32_t Len);
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -265,45 +266,52 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   /* USER CODE BEGIN 6 */
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-  uint64_t data = 0;
-  if (*Len == 4)
-  {
-	  CDC_Transmit_FS(Buf, *Len);
-  }
-  if (*Len > 4)
-  {
 
-	  Flash_Erase(DATA_PAGE_ADDR);
-	  dataLength = *Len/8;
-	  currentEffect = 0;
-	  HAL_FLASH_Unlock();
-	  for (int i = 0; i < *Len; i += 8)
-	  {
-		  //memcpy(RxBuf, UserRxBufferFS, *Len);
-		  RxBuffer[i/8].EffectItemNum 	= Buf[i + 0];
-		  RxBuffer[i/8].HourDuration 	= Buf[i + 1];
-		  RxBuffer[i/8].MinuteDuration 	= Buf[i + 2];
-		  RxBuffer[i/8].SecondDuration 	= Buf[i + 3];
-		  RxBuffer[i/8].Color_R 		= Buf[i + 4];
-		  RxBuffer[i/8].Color_G 		= Buf[i + 5];
-		  RxBuffer[i/8].Color_B 		= Buf[i + 6];
-		  RxBuffer[i/8].reserved 		= Buf[i + 7];
-		  data = 		  ((uint64_t)Buf[i + 0] << 56) |
-		                  ((uint64_t)Buf[i + 1] << 48) |
-		                  ((uint64_t)Buf[i + 2] << 40) |
-		                  ((uint64_t)Buf[i + 3] << 32) |
-		                  ((uint64_t)Buf[i + 4] << 24) |
-		                  ((uint64_t)Buf[i + 5] << 16) |
-		                  ((uint64_t)Buf[i + 6] << 8)  |
-		                  ((uint64_t)Buf[i + 7] << 0);
+  //ReceiveEffect(Buf, *Len);
+  StoreEffectIntoBuffer(Buf, *Len);
 
-		  Flash_WriteDoubleWord(DATA_PAGE_ADDR + i, data);
-		  data = Flash_ReadDoubleWord(DATA_PAGE_ADDR + i);
-	  }
-	  HAL_FLASH_Lock();
-  }
 
-  printf("%p", RxBuffer);
+
+
+
+//  uint64_t data = 0;
+//  if (*Len == 4)
+//  {
+//	  CDC_Transmit_FS(Buf, *Len);
+//  }
+//  if (*Len > 4)
+//  {
+//	  Flash_Erase(DATA_PAGE_ADDR);
+//	  dataLength = *Len/8;
+//	  currentEffect = 0;
+//	  HAL_FLASH_Unlock();
+//	  for (int i = 0; i < *Len; i += 8)
+//	  {
+//		  //memcpy(RxBuf, UserRxBufferFS, *Len);
+//		  RxBuffer[i/8].EffectItemNum 	= Buf[i + 0];
+//		  RxBuffer[i/8].HourDuration 	= Buf[i + 1];
+//		  RxBuffer[i/8].MinuteDuration 	= Buf[i + 2];
+//		  RxBuffer[i/8].SecondDuration 	= Buf[i + 3];
+//		  RxBuffer[i/8].Color_R 		= Buf[i + 4];
+//		  RxBuffer[i/8].Color_G 		= Buf[i + 5];
+//		  RxBuffer[i/8].Color_B 		= Buf[i + 6];
+//		  RxBuffer[i/8].reserved 		= Buf[i + 7];
+//		  data = 		  ((uint64_t)Buf[i + 0] << 56) |
+//		                  ((uint64_t)Buf[i + 1] << 48) |
+//		                  ((uint64_t)Buf[i + 2] << 40) |
+//		                  ((uint64_t)Buf[i + 3] << 32) |
+//		                  ((uint64_t)Buf[i + 4] << 24) |
+//		                  ((uint64_t)Buf[i + 5] << 16) |
+//		                  ((uint64_t)Buf[i + 6] << 8)  |
+//		                  ((uint64_t)Buf[i + 7] << 0);
+//
+//		  Flash_WriteDoubleWord(DATA_PAGE_ADDR + i, data);
+//		  data = Flash_ReadDoubleWord(DATA_PAGE_ADDR + i);
+//	  }
+//	  HAL_FLASH_Lock();
+//  }
+//
+//  printf("%p", RxBuffer);
 
   return (USBD_OK);
   /* USER CODE END 6 */
@@ -335,15 +343,28 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
-//uint8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum) {
-//    UNUSED(Buf);
-//    UNUSED(Len);
-//    UNUSED(epnum);
-//
-//    USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-//    hcdc->TxState = 0;  // Giải phóng bộ đệm
-//    return USBD_OK;
-//}
+
+void StoreEffectIntoBuffer(uint8_t* Buf, uint32_t Len)
+{
+	num = 0;
+	for (uint8_t i = 0; i < Len; i += 8)
+	{
+		Effect_t effect;
+		effect.EffectItemNum 	= Buf[i + 0];
+		effect.HourDuration 	= Buf[i + 1];
+		effect.MinuteDuration 	= Buf[i + 2];
+		effect.SecondDuration 	= Buf[i + 3];
+		effect.Color_R 			= Buf[i + 4];
+		effect.Color_G 			= Buf[i + 5];
+		effect.Color_B 			= Buf[i + 6];
+		effect.reserved 		= Buf[i + 7];
+		RxBuffer[num] = effect;
+		num = (num + 1) % 80;
+	}
+
+	currentEffect = 0;
+	flash_flag = 1;
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

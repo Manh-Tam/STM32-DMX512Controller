@@ -34,6 +34,19 @@ void Flash_WriteDoubleWord(uint32_t pageAddr, uint64_t data)
 	HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, pageAddr, data);
 }
 
+void Flash_WriteEffect(uint32_t pageAddr, Effect_t effect)
+{
+	uint64_t data = 		  ((uint64_t)effect.EffectItemNum << 56) |
+			                  ((uint64_t)effect.HourDuration << 48) |
+			                  ((uint64_t)effect.MinuteDuration << 40) |
+			                  ((uint64_t)effect.SecondDuration << 32) |
+			                  ((uint64_t)effect.Color_R << 24) |
+			                  ((uint64_t)effect.Color_G << 16) |
+			                  ((uint64_t)effect.Color_B << 8)  |
+			                  ((uint64_t)effect.reserved << 0);
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, pageAddr, data);
+}
+
 uint32_t Flash_ReadWord(uint32_t pageAddr)
 {
 	return *(volatile uint32_t*)pageAddr;

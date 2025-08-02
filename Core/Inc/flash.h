@@ -11,12 +11,15 @@
 #include <stdint.h>
 #include <string.h>
 #include "stm32f1xx.h"
+#include "Effect.h"
 
 #define DATA_PAGE_ADDR (0x08000000 + 63 * 1024) //page 63
 
 void Flash_WriteWord(uint32_t pageAddr, uint32_t data);
 
 void Flash_WriteDoubleWord(uint32_t pageAddr, uint64_t data);
+
+void Flash_WriteEffect(uint32_t pageAddr, Effect_t effect);
 
 uint32_t Flash_ReadWord(uint32_t pageAddr);
 

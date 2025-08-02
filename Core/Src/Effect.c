@@ -158,8 +158,6 @@ void RainbowBreathing()
 {
 	HAL_UART_Init(&huart1);
 	uint8_t data[3] = {0, 0, 0};
-//	static float up_down1 = 1.0;
-//	static float up_down2 = 0.0;
 	static uint16_t level = 0;
 	static uint16_t base_hue = 0;
 
@@ -172,17 +170,6 @@ void RainbowBreathing()
 
 	for (uint16_t j = 0; j < NUM_OF_LIGHT; j++)
 	{
-
-//		if (up_down1 == 1)
-//			up_down2 += 0.01;
-//		if (up_down2 >= 1)
-//			up_down1 = 0;
-//		if (up_down1 == 0)
-//			up_down2 -= 0.01;
-//		if (up_down2 <= 0)
-//			up_down1 = 1;
-
-
 		HAL_UART_Transmit(&huart1, data, sizeof(data), 100);
 	}
 	HAL_UART_DeInit(&huart1);

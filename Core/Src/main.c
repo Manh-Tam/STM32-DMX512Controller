@@ -22,11 +22,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "flash.h"
 #include "usbd_cdc_if.h"
-#include "Effect.h"
-#include <stdint.h>
-
+#include "stdint.h"
+#include "Effect_Handle.h"
 
 /* USER CODE END Includes */
 
@@ -65,38 +63,17 @@ static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
-void GPIOA2_Init(void) {
-    __HAL_RCC_GPIOA_CLK_ENABLE();  // Bật clock cho GPIOA
-
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_9;      // Ch�?n chân PA2
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;  // Output Push-Pull
-    GPIO_InitStruct.Pull = GPIO_NOPULL;    // Không dùng Pull-up/Pull-down
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH; // Tốc độ cao
-
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);  // Khởi tạo chân PA2
-}
-
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-Effect_t RxBuffer[100];
-uint8_t dataLength = 0;
+Effect_t RxBuffer[80];
+uint8_t num = 0;
 uint8_t currentEffect = 0;
+uint8_t flash_flag = 0;
 
-
-void delay_us(uint16_t us)
-{
-	__HAL_TIM_SET_COUNTER(&htim2, 0);
-	HAL_TIM_Base_Start(&htim2);
-	while (__HAL_TIM_GET_COUNTER(&htim2) < us);
-	HAL_TIM_Base_Stop(&htim2);
-}
-
-void UART2_Init();
 /* USER CODE END 0 */
 
 /**
@@ -136,21 +113,10 @@ int main(void)
   //Flash_Erase(ADDRESS_DATA_STORAGE);
   //Flash_Write_Int(ADDRESS_DATA_STORAGE, 32);
   //int i = Flash_Read_Int(ADDRESS_DATA_STORAGE);
-  memset(RxBuffer, 2, sizeof(RxBuffer));
+  memset(RxBuffer, 0, sizeof(RxBuffer));
 
-  //volatile uint64_t data = Flash_ReadDoubleWord(DATA_PAGE_ADDR);
-  dataLength = Flash_ReadWord(DATA_PAGE_ADDR);
-  for (uint8_t i = 0; i < dataLength; i++)
-  {
-	  uint64_t data = Flash_ReadDoubleWord(DATA_PAGE_ADDR + (i * 8));
-	  RxBuffer[i].EffectItemNum = (data >> 56) & 0xff;
-	  RxBuffer[i].HourDuration = (data >> 48) & 0xff;
-	  RxBuffer[i].MinuteDuration = (data >> 40) & 0xff;
-	  RxBuffer[i].SecondDuration = (data >> 32) & 0xff;
-	  RxBuffer[i].Color_R = (data >> 24) & 0xff;
-	  RxBuffer[i].Color_G = (data >> 16) & 0xff;
-	  RxBuffer[i].Color_B = (data >> 8) & 0xff;
-  }
+  ReadEffectFromFlash(DATA_PAGE_ADDR);
+
   uint32_t previousTick = HAL_GetTick();
   /* USER CODE END 2 */
 
@@ -162,62 +128,20 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  GPIOA2_Init();
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, SET);
-	  HAL_Delay(1);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, RESET);
-	  delay_us(100);
-	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, SET);
-	  delay_us(1);
+	  //if effects are received, store them into flash
+	  StoreEffectIntoFlash(DATA_PAGE_ADDR);
 
-//	  uint64_t data = Flash_ReadDoubleWord(DATA_PAGE_ADDR + i * 8);
-//
-//	  Effect_t effect =
-//	  {
-//			  .EffectItemNum = (data >> 56) & 0xff,
-//			  .HourDuration = (data >> 48) & 0xff,
-//			  .MinuteDuration = (data >> 40) & 0xff,
-//			  .SecondDuration = (data >> 32) & 0xff,
-//			  .Color_R = (data >> 24) & 0xff,
-//			  .Color_G = (data >> 16) & 0xff,
-//			  .Color_B = (data >> 8) & 0xff,
-//	  };
+	  //initialize Break and Mark After Break Signal
+	  BMAB_Init();
 
+	  //get the current effect
 	  Effect_t effect = RxBuffer[currentEffect];
 
-	  switch (effect.EffectItemNum)
-	  {
-	  case 0:
-		  Rainbow();
-		  break;
-	  case 1:
-		  RainbowWipe();
-		  break;
-	  case 2:
-		  Chase();
-		  break;
-	  case 3:
-		  Breathing();
-		  break;
-	  case 4:
-		  RainbowBreathing();
-		  break;
-	  case 5:
-		  Custom();
-		  break;
-	  default:
-		  Rainbow();
-		  break;
-	  }
-	  uint32_t duration = effect.HourDuration * 60 * 60 + effect.MinuteDuration * 60 + effect.SecondDuration;
-	  uint32_t currentTick = HAL_GetTick();
-	  if (currentTick - previousTick > duration * 1000)
-	  {
-		  previousTick = HAL_GetTick();
-		  currentEffect++;
-		  if (currentEffect >= dataLength)
-			  currentEffect = 0;
-	  }
+	  //run the selected effect
+	  RunEffect(effect);
+
+	  //Update effect
+	  UpdateEffect(effect, &previousTick);
   }
   /* USER CODE END 3 */
 }
@@ -457,32 +381,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void UART2_Init(void)
-{
-    // 1. Enable clocks
-    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
 
-    // 2. Configure PA2 (TX) and PA3 (RX)
-    GPIOA->CRL &= ~(GPIO_CRL_MODE2 | GPIO_CRL_CNF2);
-    GPIOA->CRL |=  (GPIO_CRL_MODE2_1 | GPIO_CRL_MODE2_0); // Output 50MHz
-    GPIOA->CRL |=  GPIO_CRL_CNF2_1; // Alternate function push-pull
-
-    GPIOA->CRL &= ~(GPIO_CRL_MODE3 | GPIO_CRL_CNF3);
-    GPIOA->CRL |=  GPIO_CRL_CNF3_0; // Input floating
-
-    // 3. Set baudrate
-    USART2->BRR = 0x90; // 250000 baud (assuming 36 MHz PCLK1)
-
-    // 4. Configure USART: 8N2
-    USART2->CR1 = 0;
-    USART2->CR2 = 0;
-    USART2->CR3 = 0;
-
-    USART2->CR2 |= USART_CR2_STOP_1 | USART_CR2_STOP_0; // 2 stop bits
-    USART2->CR1 |= USART_CR1_TE | USART_CR1_RE;         // TX + RX
-    USART2->CR1 |= USART_CR1_UE;                        // USART enable
-}
 
 /* USER CODE END 4 */
 
